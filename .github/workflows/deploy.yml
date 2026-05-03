@@ -1,0 +1,79 @@
+name: Deploy to Hetzner
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set lower case repository name
+        run: |
+          echo "REPO_LC=${GITHUB_REPOSITORY,,}" >> ${GITHUB_ENV}
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ env.REPO_LC }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/${{ env.REPO_LC }}:latest
+          labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Deploy to Server
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: ${{ secrets.HETZNER_USER }}
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          passphrase: ${{ secrets.HETZNER_SSH_PASSPHRASE }}
+          script: |
+            echo "--- INICIANDO DEPLOY SIMPLEMSG PAINEL ---"
+            
+            # Login no GHCR
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            
+            # Download da nova imagem
+            docker pull ghcr.io/${{ env.REPO_LC }}:latest
+            
+            # Remover container antigo se existir
+            docker rm -f app-simplemsg-painel || true
+            
+            # Garantir que a rede existe
+            docker network inspect pwbot_net >/dev/null 2>&1 || docker network create pwbot_net
+            
+            # Rodar o novo container conectando na rede do proxy
+            docker run -d \
+              --name app-simplemsg-painel \
+              --restart unless-stopped \
+              --network pwbot_net \
+              -e VIRTUAL_HOST=painel.simplemsg.net.br \
+              -e LETSENCRYPT_HOST=painel.simplemsg.net.br \
+              -e LETSENCRYPT_EMAIL=suporte@produtoweb.com.br \
+              ghcr.io/${{ env.REPO_LC }}:latest
+            
+            # Limpar imagens antigas
+            docker image prune -f
+            
+            echo "--- DEPLOY CONCLUÍDO ---"
