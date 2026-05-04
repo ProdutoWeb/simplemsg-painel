@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { account } from '../lib/appwrite';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, User, LayoutDashboard, Loader2, Key } from 'lucide-react';
+import { LogOut, User, LayoutDashboard, Loader2, Key, Mail } from 'lucide-react';
 import ThemeToggle from '../components/ThemeToggle';
 
 export default function Dashboard() {
