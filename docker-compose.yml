@@ -4,6 +4,14 @@ services:
   app-simplemsg-painel:
     build: .
     container_name: app-simplemsg-painel
-    ports:
-      - "8080:80"
-    restart: always
+    restart: unless-stopped
+    networks:
+      - pwbot_net
+    environment:
+      - VIRTUAL_HOST=painel.simplemsg.net.br
+      - LETSENCRYPT_HOST=painel.simplemsg.net.br
+      - LETSENCRYPT_EMAIL=suporte@produtoweb.com.br
+
+networks:
+  pwbot_net:
+    external: true
