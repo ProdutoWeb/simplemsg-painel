@@ -2,7 +2,7 @@ import { Client, Account, ID } from 'appwrite';
 
 const client = new Client()
     .setEndpoint('https://apw.simplemsg.net.br/v1')
-    .setProject('69b40f1f001acd444805');
+    .setProject('69f87aa20030b41f3860');
 
 export const account = new Account(client);
 export { ID };
